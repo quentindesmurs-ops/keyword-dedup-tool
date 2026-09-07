@@ -116,4 +116,131 @@ export default function Home() {
   }
 
   const duplicateClusters = clusters?.filter((c) => c.keywords.length > 1) || [];
-  const totalDuplicates = duplicateClusters.reduce((sum, c) => sum + c.keywords.length -
+  const totalDuplicates = duplicateClusters.reduce((sum, c) => sum + c.keywords.length - 1, 0);
+
+  return (
+    <div className="container">
+      <h1>Dédoublonnage de mots-clés</h1>
+      <p className="subtitle">
+        Colle une liste de mots-clés, l'outil compare leurs SERPs (via Serper.dev) et regroupe ceux dont les résultats se ressemblent — comme 12pages ou Thot SEO.
+      </p>
+
+      <div className="panel">
+        <label>Liste de mots-clés (un par ligne)</label>
+        <textarea
+          value={keywordsInput}
+          onChange={(e) => setKeywordsInput(e.target.value)}
+          placeholder={"symptome grossesse\nsymptome de la grossesse\nrecette tarte aux pommes\n..."}
+        />
+
+        <div className="row">
+          <div>
+            <label>Pays (gl)</label>
+            <input type="text" value={country} onChange={(e) => setCountry(e.target.value)} placeholder="fr" />
+          </div>
+          <div>
+            <label>Langue (hl)</label>
+            <input type="text" value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="fr" />
+          </div>
+        </div>
+
+        <div className="threshold-row">
+          <label style={{ marginBottom: 0, whiteSpace: "nowrap" }}>
+            Seuil de similarité : {(threshold * 100).toFixed(0)}%
+          </label>
+          <input
+            type="range"
+            min={0.2}
+            max={0.9}
+            step={0.05}
+            value={threshold}
+            onChange={(e) => setThreshold(parseFloat(e.target.value))}
+          />
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <label>Volumes de recherche (optionnel) — format "mot-clé;volume", un par ligne</label>
+          <textarea
+            style={{ minHeight: 80 }}
+            value={volumesInput}
+            onChange={(e) => setVolumesInput(e.target.value)}
+            placeholder={"symptome grossesse;12000\nsymptome de la grossesse;500"}
+          />
+        </div>
+
+        <button className="primary" onClick={runAnalysis} disabled={loading}>
+          {loading ? "Analyse en cours..." : "Analyser les SERPs"}
+        </button>
+
+        {error && <div className="error-box">{error}</div>}
+        {loading && (
+          <div className="loading">
+            Récupération des SERPs et calcul des similarités, ça peut prendre quelques dizaines de secondes selon le nombre de mots-clés...
+          </div>
+        )}
+      </div>
+
+      {clusters && (
+        <>
+          <div className="summary-grid">
+            <div className="summary-box">
+              <div className="value">{clusters.length}</div>
+              <div className="label">groupes détectés</div>
+            </div>
+            <div className="summary-box">
+              <div className="value">{duplicateClusters.length}</div>
+              <div className="label">groupes avec doublons</div>
+            </div>
+            <div className="summary-box">
+              <div className="value">{totalDuplicates}</div>
+              <div className="label">mots-clés à éliminer</div>
+            </div>
+          </div>
+
+          <div className="panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 14 }}>
+              Liste nettoyée : <strong>{clusters.length}</strong> mots-clés à conserver sur {clusters.reduce((s, c) => s + c.keywords.length, 0)} au départ.
+            </span>
+            <button className="secondary" onClick={exportCsv}>
+              Exporter en CSV
+            </button>
+          </div>
+
+          {clusters.map((c) => (
+            <div key={c.id} className={`cluster-card ${c.keywords.length > 1 ? "duplicate" : "single"}`}>
+              <div className="cluster-title">
+                {c.keywords.length > 1
+                  ? `Groupe de ${c.keywords.length} mots-clés similaires`
+                  : "Mot-clé unique (pas de doublon détecté)"}
+              </div>
+              {c.keywords.map((kw) => {
+                const pairScore = c.pairScores.find((p) => p.a === kw || p.b === kw);
+                return (
+                  <label className="kw-option" key={kw}>
+                    {c.keywords.length > 1 ? (
+                      <input
+                        type="radio"
+                        name={`cluster-${c.id}`}
+                        checked={selection[c.id] === kw}
+                        onChange={() => setSelection({ ...selection, [c.id]: kw })}
+                      />
+                    ) : (
+                      <span style={{ width: 14 }} />
+                    )}
+                    {kw}
+                    {volumes.get(kw.toLowerCase()) !== undefined && (
+                      <span className="score-pill">{volumes.get(kw.toLowerCase())} rech./mois</span>
+                    )}
+                    {pairScore && (
+                      <span className="score-pill">{(pairScore.score * 100).toFixed(0)}% similaire</span>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
