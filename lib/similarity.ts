@@ -135,3 +135,29 @@ export function clusterKeywords(
         union(dataA.keyword, dataB.keyword);
         const rootPairs = pairScoreMap.get(find(dataA.keyword)) || [];
         rootPairs.push({ a: dataA.keyword, b: dataB.keyword, score: sim.score });
+        pairScoreMap.set(find(dataA.keyword), rootPairs);
+      }
+    }
+  }
+
+  const groups = new Map<string, string[]>();
+  allData.forEach((d) => {
+    const root = find(d.keyword);
+    const list = groups.get(root) || [];
+    list.push(d.keyword);
+    groups.set(root, list);
+  });
+
+  let id = 0;
+  const clusters: Cluster[] = Array.from(groups.values()).map((keywords) => {
+    const root = find(keywords[0]);
+    return {
+      id: id++,
+      keywords,
+      keptKeyword: keywords.length === 1 ? keywords[0] : null,
+      pairScores: pairScoreMap.get(root) || [],
+    };
+  });
+
+  return { clusters, pairSimilarities };
+}
