@@ -64,7 +64,6 @@ export default function Home() {
       }
 
       const cl: Cluster[] = data.clusters;
-      // Pré-sélection : volume le plus élevé si dispo, sinon le mot-clé le plus court.
       const initialSelection: Record<number, string> = {};
       cl.forEach((c) => {
         if (c.keywords.length === 1) {
@@ -120,10 +119,12 @@ export default function Home() {
 
   return (
     <div className="container">
-      <h1>Dédoublonnage de mots-clés</h1>
-      <p className="subtitle">
-        Colle une liste de mots-clés, l'outil compare leurs SERPs (via Serper.dev) et regroupe ceux dont les résultats se ressemblent — comme 12pages ou Thot SEO.
-      </p>
+      <header className="masthead">
+        <h1>Dédoublonnage de mots-clés</h1>
+        <p className="subtitle">
+          Colle une liste de mots-clés, l'outil compare leurs SERPs (via Serper.dev) et regroupe ceux dont les résultats se ressemblent — comme 12pages ou Thot SEO.
+        </p>
+      </header>
 
       <div className="panel">
         <label>Liste de mots-clés (un par ligne)</label>
@@ -145,9 +146,7 @@ export default function Home() {
         </div>
 
         <div className="threshold-row">
-          <label style={{ marginBottom: 0, whiteSpace: "nowrap" }}>
-            Seuil de similarité : {(threshold * 100).toFixed(0)}%
-          </label>
+          <label>Seuil de similarité : {(threshold * 100).toFixed(0)}%</label>
           <input
             type="range"
             min={0.2}
@@ -158,7 +157,7 @@ export default function Home() {
           />
         </div>
 
-        <div style={{ marginTop: 16 }}>
+        <div className="field-group">
           <label>Volumes de recherche (optionnel) — format "mot-clé;volume", un par ligne</label>
           <textarea
             style={{ minHeight: 80 }}
@@ -182,23 +181,23 @@ export default function Home() {
 
       {clusters && (
         <>
-          <div className="summary-grid">
-            <div className="summary-box">
+          <div className="stat-strip">
+            <div className="stat-cell">
               <div className="value">{clusters.length}</div>
               <div className="label">groupes détectés</div>
             </div>
-            <div className="summary-box">
+            <div className="stat-cell">
               <div className="value">{duplicateClusters.length}</div>
               <div className="label">groupes avec doublons</div>
             </div>
-            <div className="summary-box">
+            <div className="stat-cell">
               <div className="value">{totalDuplicates}</div>
               <div className="label">mots-clés à éliminer</div>
             </div>
           </div>
 
-          <div className="panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 14 }}>
+          <div className="export-row">
+            <span>
               Liste nettoyée : <strong>{clusters.length}</strong> mots-clés à conserver sur {clusters.reduce((s, c) => s + c.keywords.length, 0)} au départ.
             </span>
             <button className="secondary" onClick={exportCsv}>
@@ -206,39 +205,40 @@ export default function Home() {
             </button>
           </div>
 
-          {clusters.map((c) => (
-            <div key={c.id} className={`cluster-card ${c.keywords.length > 1 ? "duplicate" : "single"}`}>
-              <div className="cluster-title">
-                {c.keywords.length > 1
-                  ? `Groupe de ${c.keywords.length} mots-clés similaires`
-                  : "Mot-clé unique (pas de doublon détecté)"}
+          <div className="cluster-list">
+            {clusters.map((c) => (
+              <div key={c.id} className={`cluster-card ${c.keywords.length > 1 ? "duplicate" : "single"}`}>
+                <div className="cluster-title">
+                  {c.keywords.length > 1
+                    ? `Groupe de ${c.keywords.length} mots-clés similaires`
+                    : "Mot-clé unique (pas de doublon détecté)"}
+                </div>
+                {c.keywords.map((kw) => {
+                  const pairScore = c.pairScores.find((p) => p.a === kw || p.b === kw);
+                  const vol = volumes.get(kw.toLowerCase());
+                  return (
+                    <label className="kw-option" key={kw}>
+                      {c.keywords.length > 1 ? (
+                        <input
+                          type="radio"
+                          name={`cluster-${c.id}`}
+                          checked={selection[c.id] === kw}
+                          onChange={() => setSelection({ ...selection, [c.id]: kw })}
+                        />
+                      ) : (
+                        <span style={{ width: 14 }} />
+                      )}
+                      <span className="kw-text">{kw}</span>
+                      {vol !== undefined && <span className="data-tag">{vol} rech./mois</span>}
+                      {pairScore && (
+                        <span className="data-tag score">{(pairScore.score * 100).toFixed(0)}% similaire</span>
+                      )}
+                    </label>
+                  );
+                })}
               </div>
-              {c.keywords.map((kw) => {
-                const pairScore = c.pairScores.find((p) => p.a === kw || p.b === kw);
-                return (
-                  <label className="kw-option" key={kw}>
-                    {c.keywords.length > 1 ? (
-                      <input
-                        type="radio"
-                        name={`cluster-${c.id}`}
-                        checked={selection[c.id] === kw}
-                        onChange={() => setSelection({ ...selection, [c.id]: kw })}
-                      />
-                    ) : (
-                      <span style={{ width: 14 }} />
-                    )}
-                    {kw}
-                    {volumes.get(kw.toLowerCase()) !== undefined && (
-                      <span className="score-pill">{volumes.get(kw.toLowerCase())} rech./mois</span>
-                    )}
-                    {pairScore && (
-                      <span className="score-pill">{(pairScore.score * 100).toFixed(0)}% similaire</span>
-                    )}
-                  </label>
-                );
-              })}
-            </div>
-          ))}
+            ))}
+          </div>
         </>
       )}
     </div>
